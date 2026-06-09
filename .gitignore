@@ -1,0 +1,13 @@
+build/
+src/App/bin/
+src/App/dcu/
+__history/
+__recovery/
+*.local
+*.identcache
+*.dsk
+*.rsm
+*.dcu
+src/App/Finance.exe
+src/App/Finance.res
+src/App/sk4d.dll
