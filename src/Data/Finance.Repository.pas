@@ -219,12 +219,18 @@ procedure LoadTxBySql(var AHead: PListNode; const ASql: string;
 var
   Q: TFDQuery;
   R: TTransactionRec;
+const
+  TX_SELECT =
+    'SELECT t.id, t.account_id, t.date_str, t.is_income, ' +
+    'CASE WHEN t.category_id IS NOT NULL THEN c.name ELSE t.category END AS category, ' +
+    't.description, t.amount ' +
+    'FROM transactions t LEFT JOIN categories c ON c.id = t.category_id ';
 begin
   ListDispose(AHead);
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := DbConnection;
-    Q.SQL.Text := ASql;
+    Q.SQL.Text := TX_SELECT + ASql;
     if AUseParam then
       Q.ParamByName('account_id').AsLargeInt := AParamAccountId;
     Q.Open;
@@ -250,35 +256,74 @@ procedure RepoLoadTransactionsForAccount(var AHead: PListNode;
   const AAccountId: Int64);
 begin
   LoadTxBySql(AHead,
-    'SELECT id, account_id, date_str, is_income, category, description, amount '
-    + 'FROM transactions WHERE account_id = :account_id ORDER BY id',
+    'WHERE t.account_id = :account_id ORDER BY t.id',
     AAccountId, True);
 end;
 
 procedure RepoLoadAllTransactions(var AHead: PListNode);
 begin
-  LoadTxBySql(AHead,
-    'SELECT id, account_id, date_str, is_income, category, description, amount '
-    + 'FROM transactions ORDER BY id', 0, False);
+  LoadTxBySql(AHead, 'ORDER BY t.id', 0, False);
+end;
+
+procedure RepoResolveCategoryForSave(const AIsIncome: Boolean;
+  const AName: string; out ACategoryId: Int64; out ACategoryName: string);
+var
+  Q: TFDQuery;
+  V: string;
+  Flag: Integer;
+begin
+  ACategoryId := 0;
+  ACategoryName := Trim(AName);
+  if ACategoryName = '' then
+    Exit;
+  if AIsIncome then
+    Flag := 1
+  else
+    Flag := 0;
+  RepoEnsureCategory(AIsIncome, ACategoryName);
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := DbConnection;
+    Q.SQL.Text :=
+      'SELECT id, name FROM categories WHERE is_income = :f AND ' +
+      'lower(trim(name)) = lower(trim(:n)) LIMIT 1';
+    Q.ParamByName('f').AsInteger := Flag;
+    Q.ParamByName('n').AsString := ACategoryName;
+    Q.Open;
+    if not Q.Eof then
+    begin
+      ACategoryId := Q.FieldByName('id').AsLargeInt;
+      ACategoryName := Q.FieldByName('name').AsString;
+    end;
+  finally
+    Q.Free;
+  end;
 end;
 
 procedure RepoInsertTransaction(var ARec: TTransactionRec);
 var
   Q: TFDQuery;
+  CatId: Int64;
+  CatName: string;
 begin
+  RepoResolveCategoryForSave(ARec.IsIncome, ARec.Category, CatId, CatName);
+  if CatId <= 0 then
+    raise Exception.Create(TX_ERR_CATEGORY_NOT_FOUND);
+  ARec.Category := CatName;
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := DbConnection;
     Q.SQL.Text :=
-      'INSERT INTO transactions(account_id, date_str, is_income, category, description, amount, created_at) '
-      + 'VALUES(:account_id, :date_str, :is_income, :category, :description, :amount, :created_at)';
+      'INSERT INTO transactions(account_id, date_str, is_income, category, category_id, description, amount, created_at) '
+      + 'VALUES(:account_id, :date_str, :is_income, :category, :category_id, :description, :amount, :created_at)';
     Q.ParamByName('account_id').AsLargeInt := ARec.AccountId;
     Q.ParamByName('date_str').AsString := ARec.DateStr;
     if ARec.IsIncome then
       Q.ParamByName('is_income').AsInteger := 1
     else
       Q.ParamByName('is_income').AsInteger := 0;
-    Q.ParamByName('category').AsString := ARec.Category;
+    Q.ParamByName('category').AsString := CatName;
+    Q.ParamByName('category_id').AsLargeInt := CatId;
     Q.ParamByName('description').AsString := ARec.Description;
     Q.ParamByName('amount').AsFloat := ARec.Amount;
     Q.ParamByName('created_at').AsString :=
@@ -298,21 +343,27 @@ end;
 procedure RepoUpdateTransaction(const ARec: TTransactionRec);
 var
   Q: TFDQuery;
+  CatId: Int64;
+  CatName: string;
 begin
+  RepoResolveCategoryForSave(ARec.IsIncome, ARec.Category, CatId, CatName);
+  if CatId <= 0 then
+    raise Exception.Create(TX_ERR_CATEGORY_NOT_FOUND);
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := DbConnection;
     Q.SQL.Text :=
       'UPDATE transactions SET account_id=:account_id, date_str=:date_str, ' +
-      'is_income=:is_income, category=:category, description=:description, amount=:amount '
-      + 'WHERE id=:id';
+      'is_income=:is_income, category=:category, category_id=:category_id, ' +
+      'description=:description, amount=:amount WHERE id=:id';
     Q.ParamByName('account_id').AsLargeInt := ARec.AccountId;
     Q.ParamByName('date_str').AsString := ARec.DateStr;
     if ARec.IsIncome then
       Q.ParamByName('is_income').AsInteger := 1
     else
       Q.ParamByName('is_income').AsInteger := 0;
-    Q.ParamByName('category').AsString := ARec.Category;
+    Q.ParamByName('category').AsString := CatName;
+    Q.ParamByName('category_id').AsLargeInt := CatId;
     Q.ParamByName('description').AsString := ARec.Description;
     Q.ParamByName('amount').AsFloat := ARec.Amount;
     Q.ParamByName('id').AsLargeInt := ARec.Id;
@@ -477,15 +528,19 @@ begin
     if AOnlyActive then
     begin
       Q.SQL.Text :=
-        'SELECT t.date_str, t.is_income, t.category, t.description, t.amount, a.name account_name '
-        + 'FROM transactions t JOIN accounts a ON a.id=t.account_id ' +
+        'SELECT t.date_str, t.is_income, COALESCE(c.name, t.category) category, ' +
+        't.description, t.amount, a.name account_name ' +
+        'FROM transactions t JOIN accounts a ON a.id=t.account_id ' +
+        'LEFT JOIN categories c ON c.id=t.category_id ' +
         'WHERE t.account_id=:id ORDER BY t.id';
       Q.ParamByName('id').AsLargeInt := AActiveAccountId;
     end
     else
       Q.SQL.Text :=
-        'SELECT t.date_str, t.is_income, t.category, t.description, t.amount, a.name account_name '
-        + 'FROM transactions t JOIN accounts a ON a.id=t.account_id ORDER BY t.id';
+        'SELECT t.date_str, t.is_income, COALESCE(c.name, t.category) category, ' +
+        't.description, t.amount, a.name account_name ' +
+        'FROM transactions t JOIN accounts a ON a.id=t.account_id ' +
+        'LEFT JOIN categories c ON c.id=t.category_id ORDER BY t.id';
     Q.Open;
 
     Writer.WriteLine(REPO_CSV_HEADER);
@@ -607,7 +662,6 @@ begin
           Continue;
         end;
         Tx.AccountId := AccountId;
-        RepoEnsureCategory(IsIncome, Tx.Category);
         RepoInsertTransaction(Tx);
         Inc(AImported);
       finally

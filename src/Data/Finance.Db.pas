@@ -81,9 +81,11 @@ begin
   ExecSQL('CREATE TABLE IF NOT EXISTS transactions (' +
     'id INTEGER PRIMARY KEY AUTOINCREMENT,' + 'account_id INTEGER NOT NULL,' +
     'date_str TEXT NOT NULL,' + 'is_income INTEGER NOT NULL,' +
-    'category TEXT NOT NULL,' + 'description TEXT NOT NULL,' +
-    'amount REAL NOT NULL,' + 'created_at TEXT NOT NULL,' +
-    'FOREIGN KEY(account_id) REFERENCES accounts(id))');
+    'category TEXT NOT NULL,' + 'category_id INTEGER,' +
+    'description TEXT NOT NULL,' + 'amount REAL NOT NULL,' +
+    'created_at TEXT NOT NULL,' +
+    'FOREIGN KEY(account_id) REFERENCES accounts(id),' +
+    'FOREIGN KEY(category_id) REFERENCES categories(id))');
 
   ExecSQL('CREATE TABLE IF NOT EXISTS app_settings (' + 'key TEXT PRIMARY KEY,'
     + 'value TEXT NOT NULL)');
@@ -91,20 +93,57 @@ end;
 
 procedure EnsureDefaultAccountAndSettings;
 var
+  Q: TFDQuery;
   MainId: Int64;
 begin
-  ExecSQL('INSERT OR IGNORE INTO accounts(name, created_at) VALUES (' +
-    QuotedStr(REPO_DEFAULT_ACCOUNT_NAME) + ', ' + QuotedStr(IsoNow) + ')');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := GConn;
+    Q.SQL.Text :=
+      'INSERT OR IGNORE INTO accounts(name, created_at) VALUES (:n, :dt)';
+    Q.ParamByName('n').AsString := REPO_DEFAULT_ACCOUNT_NAME;
+    Q.ParamByName('dt').AsString := IsoNow;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+
   MainId := ScalarInt64('SELECT id FROM accounts WHERE name = ' +
     QuotedStr(REPO_DEFAULT_ACCOUNT_NAME) + ' LIMIT 1');
   if MainId <= 0 then
     Exit;
-  ExecSQL('INSERT OR IGNORE INTO app_settings(key, value) VALUES (' +
-    QuotedStr(REPO_KEY_ACTIVE_ACCOUNT_ID) + ', ' +
-    QuotedStr(IntToStr(MainId)) + ')');
-  ExecSQL('INSERT OR IGNORE INTO app_settings(key, value) VALUES (' +
-    QuotedStr(REPO_KEY_ANALYTICS_SCOPE) + ', ' +
-    QuotedStr(REPO_SCOPE_ACTIVE) + ')');
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := GConn;
+    Q.SQL.Text :=
+      'INSERT OR IGNORE INTO app_settings(key, value) VALUES (:k, :v)';
+    Q.ParamByName('k').AsString := REPO_KEY_ACTIVE_ACCOUNT_ID;
+    Q.ParamByName('v').AsString := IntToStr(MainId);
+    Q.ExecSQL;
+    Q.ParamByName('k').AsString := REPO_KEY_ANALYTICS_SCOPE;
+    Q.ParamByName('v').AsString := REPO_SCOPE_ACTIVE;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+procedure InsertDefaultCategory(const AName: string; AIsIncome: Integer);
+var
+  Q: TFDQuery;
+begin
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := GConn;
+    Q.SQL.Text :=
+      'INSERT OR IGNORE INTO categories(name, is_income) VALUES (:n, :f)';
+    Q.ParamByName('n').AsString := AName;
+    Q.ParamByName('f').AsInteger := AIsIncome;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
 end;
 
 procedure EnsureDefaultCategories;
@@ -112,12 +151,58 @@ var
   I: Integer;
 begin
   for I := Low(DEFAULT_INCOME_CATEGORIES) to High(DEFAULT_INCOME_CATEGORIES) do
-    ExecSQL('INSERT OR IGNORE INTO categories(name, is_income) VALUES (' +
-      QuotedStr(DEFAULT_INCOME_CATEGORIES[I]) + ', 1)');
+    InsertDefaultCategory(DEFAULT_INCOME_CATEGORIES[I], 1);
   for I := Low(DEFAULT_EXPENSE_CATEGORIES)
     to High(DEFAULT_EXPENSE_CATEGORIES) do
-    ExecSQL('INSERT OR IGNORE INTO categories(name, is_income) VALUES (' +
-      QuotedStr(DEFAULT_EXPENSE_CATEGORIES[I]) + ', 0)');
+    InsertDefaultCategory(DEFAULT_EXPENSE_CATEGORIES[I], 0);
+end;
+
+function HasTableColumn(const ATable, AColumn: string): Boolean;
+var
+  Q: TFDQuery;
+begin
+  Result := False;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := GConn;
+    Q.SQL.Text := 'PRAGMA table_info(' + ATable + ')';
+    Q.Open;
+    while not Q.Eof do
+    begin
+      if SameText(Q.FieldByName('name').AsString, AColumn) then
+        Exit(True);
+      Q.Next;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+procedure EnsureCategoryIdColumn;
+begin
+  if HasTableColumn('transactions', 'category_id') then
+    Exit;
+  ExecSQL('ALTER TABLE transactions ADD COLUMN category_id INTEGER ' +
+    'REFERENCES categories(id)');
+end;
+
+procedure RepairTransactionCategories;
+begin
+  ExecSQL(
+    'UPDATE transactions SET category_id = (' +
+    'SELECT c.id FROM categories c ' +
+    'WHERE c.is_income = transactions.is_income AND ' +
+    'lower(trim(c.name)) = lower(trim(transactions.category)) ' +
+    'LIMIT 1) WHERE category_id IS NULL OR category_id NOT IN ' +
+    '(SELECT id FROM categories)');
+  ExecSQL(
+    'UPDATE transactions SET category_id = (' +
+    'SELECT c.id FROM categories c WHERE c.is_income = transactions.is_income ' +
+    'ORDER BY c.id LIMIT 1) WHERE category_id IS NULL');
+  ExecSQL(
+    'UPDATE transactions SET category = (' +
+    'SELECT c.name FROM categories c WHERE c.id = transactions.category_id) ' +
+    'WHERE category_id IS NOT NULL');
 end;
 
 function ReadSetting(const AKey, ADefault: string): string;
@@ -156,6 +241,15 @@ begin
 
   if CurNum < 3 then
     ExecSQL('DELETE FROM transactions');
+
+  if CurNum < 4 then
+  begin
+    EnsureCategoryIdColumn;
+    RepairTransactionCategories;
+  end;
+
+  if CurNum < 5 then
+    RepairTransactionCategories;
 
   ExecSQL('INSERT OR REPLACE INTO app_settings(key, value) VALUES (' +
     QuotedStr(REPO_KEY_ENCODING_VERSION) + ', ' +

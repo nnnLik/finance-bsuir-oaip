@@ -92,12 +92,13 @@ const
   TX_ERR_CATEGORY_REQUIRED = 'Укажите категорию.';
   TX_ERR_AMOUNT_INVALID = 'Некорректная сумма.';
   TX_ERR_AMOUNT_POSITIVE = 'Сумма должна быть больше нуля.';
+  TX_ERR_CATEGORY_NOT_FOUND = 'Категория не найдена.';
 
   // Repository keys and values
   REPO_KEY_ACTIVE_ACCOUNT_ID = 'active_account_id';
   REPO_KEY_ANALYTICS_SCOPE = 'analytics_scope';
   REPO_KEY_ENCODING_VERSION = 'encoding_version';
-  REPO_ENCODING_VERSION = '3';
+  REPO_ENCODING_VERSION = '5';
   REPO_SCOPE_ACTIVE = 'active';
   REPO_SCOPE_ALL = 'all';
   REPO_FILTER_ALL = 'Все';
