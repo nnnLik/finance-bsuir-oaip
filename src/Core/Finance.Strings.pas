@@ -5,7 +5,6 @@ interface
 const
   // App-level
   APP_CAPTION = 'Учёт доходов и расходов';
-  APP_STYLE_NAME = 'Glossy';
   APP_MUTEX_NAME = 'Local\FinanceApp.SingleInstance';
   APP_ALREADY_RUNNING_MSG = 'Приложение уже запущено.';
 

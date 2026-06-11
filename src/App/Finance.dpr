@@ -24,17 +24,11 @@ uses
   UnitTransactionEditor in '..\UI\Forms\UnitTransactionEditor.pas' {TransactionEditForm},
   Finance.AnalyticsTabsService in '..\UI\Logic\Finance.AnalyticsTabsService.pas',
   FireDAC.VCLUI.Wait,
-  Vcl.Themes,
-  Vcl.Styles,
   Finance.Repository in '..\Data\Finance.Repository.pas';
-
-var
-  GAppMutex: THandle;
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
-  TStyleManager.TrySetStyle(APP_STYLE_NAME);
   Application.CreateForm(TMainShellForm, MainShellForm);
   Application.Run;
 end.
