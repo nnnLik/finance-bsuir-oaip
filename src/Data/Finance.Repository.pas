@@ -36,7 +36,6 @@ implementation
 
 uses
   System.SysUtils,
-  System.Classes,
   FireDAC.Comp.Client,
   FireDAC.Stan.Param,
   Finance.Db,
