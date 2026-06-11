@@ -11,3 +11,4 @@ __recovery/
 src/App/Finance.exe
 src/App/Finance.res
 src/App/sk4d.dll
+src/App/bin/**/sqlite3.dll

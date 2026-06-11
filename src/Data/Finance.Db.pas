@@ -35,6 +35,12 @@ begin
     DEFAULT_DB_FILE;
 end;
 
+function SqliteVendorLibPath: string;
+begin
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
+    'sqlite3.dll';
+end;
+
 function IsoNow: string;
 begin
   Result := FormatDateTime('yyyy-mm-dd hh:nn:ss', Now);
@@ -176,6 +182,8 @@ begin
     GConn.Params.Add('Synchronous=Normal');
     GConn.Params.Add('JournalMode=WAL');
     GConn.Params.Add('OpenMode=CreateUTF8');
+    if FileExists(SqliteVendorLibPath) then
+      GConn.Params.Add('VendorLib=' + SqliteVendorLibPath);
     GConn.Connected := True;
 
     EnsureSchema;
