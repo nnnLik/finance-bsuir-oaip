@@ -27,18 +27,21 @@ uses
 
 var
   GConn: TFDConnection;
+  GSqliteLink: TFDPhysSQLiteDriverLink;
   GInited: Boolean;
+
+procedure EnsureSqliteDriver;
+begin
+  if GSqliteLink <> nil then
+    Exit;
+  GSqliteLink := TFDPhysSQLiteDriverLink.Create(nil);
+  GSqliteLink.Linkage := slStatic;
+end;
 
 function DbPath: string;
 begin
   Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
     DEFAULT_DB_FILE;
-end;
-
-function SqliteVendorLibPath: string;
-begin
-  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
-    'sqlite3.dll';
 end;
 
 function IsoNow: string;
@@ -172,6 +175,7 @@ begin
   if GInited then
     Exit;
 
+  EnsureSqliteDriver;
   GConn := TFDConnection.Create(nil);
   try
     GConn.LoginPrompt := False;
@@ -182,8 +186,6 @@ begin
     GConn.Params.Add('Synchronous=Normal');
     GConn.Params.Add('JournalMode=WAL');
     GConn.Params.Add('OpenMode=CreateUTF8');
-    if FileExists(SqliteVendorLibPath) then
-      GConn.Params.Add('VendorLib=' + SqliteVendorLibPath);
     GConn.Connected := True;
 
     EnsureSchema;

@@ -109,7 +109,6 @@
         <Debugger_WorkingDir>bin\Win32\Release\</Debugger_WorkingDir>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
-        <PostBuildEvent><![CDATA[copy /Y "$(BDS)\bin\sqlite3.dll" "$(DCC_ExeOutput)" >nul]]></PostBuildEvent>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
@@ -117,7 +116,6 @@
         <DCC_DcuOutput>dcu\Win64\Release\</DCC_DcuOutput>
         <Debugger_HostApplication>bin\Win64\Release\Finance.exe</Debugger_HostApplication>
         <Debugger_WorkingDir>bin\Win64\Release\</Debugger_WorkingDir>
-        <PostBuildEvent><![CDATA[copy /Y "$(BDS)\bin64\sqlite3.dll" "$(DCC_ExeOutput)" >nul]]></PostBuildEvent>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -134,7 +132,6 @@
         <DCC_DcuOutput>dcu\Win32\Debug\</DCC_DcuOutput>
         <Debugger_HostApplication>bin\Win32\Debug\Finance.exe</Debugger_HostApplication>
         <Debugger_WorkingDir>bin\Win32\Debug\</Debugger_WorkingDir>
-        <PostBuildEvent><![CDATA[copy /Y "$(BDS)\bin\sqlite3.dll" "$(DCC_ExeOutput)" >nul]]></PostBuildEvent>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
@@ -142,7 +139,6 @@
         <DCC_DcuOutput>dcu\Win64\Debug\</DCC_DcuOutput>
         <Debugger_HostApplication>bin\Win64\Debug\Finance.exe</Debugger_HostApplication>
         <Debugger_WorkingDir>bin\Win64\Debug\</Debugger_WorkingDir>
-        <PostBuildEvent><![CDATA[copy /Y "$(BDS)\bin64\sqlite3.dll" "$(DCC_ExeOutput)" >nul]]></PostBuildEvent>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
@@ -265,38 +261,6 @@
                         <RemoteDir>.\</RemoteDir>
                         <Operation>0</Operation>
                         <RemoteName>sk4d.dll</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile Required="true" LocalName="$(BDS)\bin64\sqlite3.dll" Configuration="Debug" Class="File">
-                    <Platform Name="Win64">
-                        <RemoteDir>.\</RemoteDir>
-                        <Operation>0</Operation>
-                        <RemoteName>sqlite3.dll</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile Required="true" LocalName="$(BDS)\bin64\sqlite3.dll" Configuration="Release" Class="File">
-                    <Platform Name="Win64">
-                        <RemoteDir>.\</RemoteDir>
-                        <Operation>0</Operation>
-                        <RemoteName>sqlite3.dll</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile Required="true" LocalName="$(BDS)\bin\sqlite3.dll" Configuration="Debug" Class="File">
-                    <Platform Name="Win32">
-                        <RemoteDir>.\</RemoteDir>
-                        <Operation>0</Operation>
-                        <RemoteName>sqlite3.dll</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile Required="true" LocalName="$(BDS)\bin\sqlite3.dll" Configuration="Release" Class="File">
-                    <Platform Name="Win32">
-                        <RemoteDir>.\</RemoteDir>
-                        <Operation>0</Operation>
-                        <RemoteName>sqlite3.dll</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
