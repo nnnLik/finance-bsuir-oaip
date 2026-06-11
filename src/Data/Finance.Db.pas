@@ -19,6 +19,7 @@ uses
   FireDAC.Stan.Param,
   FireDAC.Phys.SQLite,
   FireDAC.Phys.SQLiteDef,
+  FireDAC.Phys.SQLiteWrapper.Stat,
   FireDAC.Stan.Def,
   FireDAC.Stan.Async,
   FireDAC.DApt,
@@ -27,16 +28,7 @@ uses
 
 var
   GConn: TFDConnection;
-  GSqliteLink: TFDPhysSQLiteDriverLink;
   GInited: Boolean;
-
-procedure EnsureSqliteDriver;
-begin
-  if GSqliteLink <> nil then
-    Exit;
-  GSqliteLink := TFDPhysSQLiteDriverLink.Create(nil);
-  GSqliteLink.Linkage := slStatic;
-end;
 
 function DbPath: string;
 begin
@@ -175,7 +167,6 @@ begin
   if GInited then
     Exit;
 
-  EnsureSqliteDriver;
   GConn := TFDConnection.Create(nil);
   try
     GConn.LoginPrompt := False;
