@@ -119,6 +119,36 @@ begin
       QuotedStr(DEFAULT_EXPENSE_CATEGORIES[I]) + ', 0)');
 end;
 
+function ReadSetting(const AKey, ADefault: string): string;
+var
+  Q: TFDQuery;
+begin
+  Result := ADefault;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := GConn;
+    Q.SQL.Text := 'SELECT value FROM app_settings WHERE key = :k';
+    Q.ParamByName('k').AsString := AKey;
+    Q.Open;
+    if not Q.Eof then
+      Result := Q.Fields[0].AsString;
+  finally
+    Q.Free;
+  end;
+end;
+
+procedure EnsureCategoryEncoding;
+begin
+  if SameText(ReadSetting(REPO_KEY_ENCODING_VERSION, '1'),
+    REPO_ENCODING_VERSION) then
+    Exit;
+  ExecSQL('DELETE FROM categories');
+  EnsureDefaultCategories;
+  ExecSQL('INSERT OR REPLACE INTO app_settings(key, value) VALUES (' +
+    QuotedStr(REPO_KEY_ENCODING_VERSION) + ', ' +
+    QuotedStr(REPO_ENCODING_VERSION) + ')');
+end;
+
 procedure DbInit;
 begin
   if GInited then
@@ -138,6 +168,7 @@ begin
 
     EnsureSchema;
     EnsureDefaultAccountAndSettings;
+    EnsureCategoryEncoding;
     EnsureDefaultCategories;
 
     GInited := True;

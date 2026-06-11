@@ -117,7 +117,7 @@ var
   S: string;
   Dt: TDateTime;
 begin
-  S := Trim(string(ARec.DateStr));
+  S := Trim(ARec.DateStr);
   if (S <> '') and TryParseRuDate(S, Dt) then
     dtpDate.Date := Dt
   else
@@ -134,9 +134,9 @@ begin
     rbIncome.Checked := False;
   end;
 
-  RefillCategories(string(ARec.Category));
+  RefillCategories(ARec.Category);
 
-  edtDescription.Text := string(ARec.Description);
+  edtDescription.Text := ARec.Description;
   edtAmount.Text := FormatFloat(AMOUNT_FORMAT, ARec.Amount);
 end;
 
@@ -149,11 +149,11 @@ var
 begin
   KeepId := ARec.Id;
   KeepAccountId := ARec.AccountId;
-  FillChar(ARec, SizeOf(ARec), 0);
+  ARec := Default(TTransactionRec);
   ARec.Id := KeepId;
   ARec.AccountId := KeepAccountId;
   S := FormatDateTime('dd.mm.yyyy', dtpDate.Date);
-  ARec.DateStr := ShortString(S);
+  ARec.DateStr := S;
 
   ARec.IsIncome := rbIncome.Checked;
 
@@ -166,9 +166,9 @@ begin
     else
       raise Exception.Create(TX_ERR_CATEGORY_REQUIRED);
   end;
-  ARec.Category := ShortString(S);
+  ARec.Category := S;
 
-  ARec.Description := ShortString(Trim(edtDescription.Text));
+  ARec.Description := Trim(edtDescription.Text);
 
   FS := TFormatSettings.Create;
   FS.DecimalSeparator := '.';
@@ -190,7 +190,7 @@ begin
   end
   else
   begin
-    FillChar(FResult, SizeOf(FResult), 0);
+    FResult := Default(TTransactionRec);
     dtpDate.Date := Date;
     rbIncome.Checked := True;
     rbExpense.Checked := False;
@@ -207,7 +207,7 @@ procedure TTransactionEditForm.btnOKClick(Sender: TObject);
 begin
   try
     SaveToRec(FResult);
-    EnsureUserCategory(FResult.IsIncome, string(FResult.Category));
+    EnsureUserCategory(FResult.IsIncome, FResult.Category);
   except
     on E: Exception do
     begin

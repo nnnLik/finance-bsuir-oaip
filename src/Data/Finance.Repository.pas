@@ -36,6 +36,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   FireDAC.Comp.Client,
   FireDAC.Stan.Param,
   Finance.Db,
@@ -230,13 +231,13 @@ begin
     Q.Open;
     while not Q.Eof do
     begin
-      FillChar(R, SizeOf(R), 0);
+      R := Default(TTransactionRec);
       R.Id := Q.FieldByName('id').AsLargeInt;
       R.AccountId := Q.FieldByName('account_id').AsLargeInt;
-      R.DateStr := ShortString(Q.FieldByName('date_str').AsString);
+      R.DateStr := Q.FieldByName('date_str').AsString;
       R.IsIncome := Q.FieldByName('is_income').AsInteger = 1;
-      R.Category := ShortString(Q.FieldByName('category').AsString);
-      R.Description := ShortString(Q.FieldByName('description').AsString);
+      R.Category := Q.FieldByName('category').AsString;
+      R.Description := Q.FieldByName('description').AsString;
       R.Amount := Q.FieldByName('amount').AsFloat;
       AppendRec(AHead, R);
       Q.Next;
@@ -273,13 +274,13 @@ begin
       'INSERT INTO transactions(account_id, date_str, is_income, category, description, amount, created_at) '
       + 'VALUES(:account_id, :date_str, :is_income, :category, :description, :amount, :created_at)';
     Q.ParamByName('account_id').AsLargeInt := ARec.AccountId;
-    Q.ParamByName('date_str').AsString := string(ARec.DateStr);
+    Q.ParamByName('date_str').AsString := ARec.DateStr;
     if ARec.IsIncome then
       Q.ParamByName('is_income').AsInteger := 1
     else
       Q.ParamByName('is_income').AsInteger := 0;
-    Q.ParamByName('category').AsString := string(ARec.Category);
-    Q.ParamByName('description').AsString := string(ARec.Description);
+    Q.ParamByName('category').AsString := ARec.Category;
+    Q.ParamByName('description').AsString := ARec.Description;
     Q.ParamByName('amount').AsFloat := ARec.Amount;
     Q.ParamByName('created_at').AsString :=
       FormatDateTime('yyyy-mm-dd hh:nn:ss', Now);
@@ -307,13 +308,13 @@ begin
       'is_income=:is_income, category=:category, description=:description, amount=:amount '
       + 'WHERE id=:id';
     Q.ParamByName('account_id').AsLargeInt := ARec.AccountId;
-    Q.ParamByName('date_str').AsString := string(ARec.DateStr);
+    Q.ParamByName('date_str').AsString := ARec.DateStr;
     if ARec.IsIncome then
       Q.ParamByName('is_income').AsInteger := 1
     else
       Q.ParamByName('is_income').AsInteger := 0;
-    Q.ParamByName('category').AsString := string(ARec.Category);
-    Q.ParamByName('description').AsString := string(ARec.Description);
+    Q.ParamByName('category').AsString := ARec.Category;
+    Q.ParamByName('description').AsString := ARec.Description;
     Q.ParamByName('amount').AsFloat := ARec.Amount;
     Q.ParamByName('id').AsLargeInt := ARec.Id;
     Q.ExecSQL;
@@ -453,26 +454,25 @@ begin
     ExecKV(REPO_KEY_ANALYTICS_SCOPE, REPO_SCOPE_ACTIVE);
 end;
 
-procedure CsvWriteEscaped(var F: TextFile; const S: string;
+procedure CsvWriteEscaped(Writer: TStreamWriter; const S: string;
   const Last: Boolean);
 var
   E: string;
 begin
   E := StringReplace(S, '"', '""', [rfReplaceAll]);
-  Write(F, '"' + E + '"');
+  Writer.Write('"' + E + '"');
   if not Last then
-    Write(F, ',');
+    Writer.Write(',');
 end;
 
 procedure RepoExportCsv(const APath: string; const AOnlyActive: Boolean;
   const AActiveAccountId: Int64);
 var
   Q: TFDQuery;
-  F: TextFile;
+  Writer: TStreamWriter;
 begin
   Q := TFDQuery.Create(nil);
-  AssignFile(F, APath);
-  Rewrite(F);
+  Writer := TStreamWriter.Create(APath, False, TEncoding.UTF8);
   try
     Q.Connection := DbConnection;
     if AOnlyActive then
@@ -489,21 +489,21 @@ begin
         + 'FROM transactions t JOIN accounts a ON a.id=t.account_id ORDER BY t.id';
     Q.Open;
 
-    WriteLn(F, REPO_CSV_HEADER);
+    Writer.WriteLine(REPO_CSV_HEADER);
     while not Q.Eof do
     begin
-      CsvWriteEscaped(F, Q.FieldByName('date_str').AsString, False);
-      CsvWriteEscaped(F, Q.FieldByName('is_income').AsString, False);
-      CsvWriteEscaped(F, Q.FieldByName('category').AsString, False);
-      CsvWriteEscaped(F, Q.FieldByName('description').AsString, False);
-      CsvWriteEscaped(F, FormatFloat(AMOUNT_FORMAT, Q.FieldByName('amount')
+      CsvWriteEscaped(Writer, Q.FieldByName('date_str').AsString, False);
+      CsvWriteEscaped(Writer, Q.FieldByName('is_income').AsString, False);
+      CsvWriteEscaped(Writer, Q.FieldByName('category').AsString, False);
+      CsvWriteEscaped(Writer, Q.FieldByName('description').AsString, False);
+      CsvWriteEscaped(Writer, FormatFloat(AMOUNT_FORMAT, Q.FieldByName('amount')
         .AsFloat), False);
-      CsvWriteEscaped(F, Q.FieldByName('account_name').AsString, True);
-      WriteLn(F);
+      CsvWriteEscaped(Writer, Q.FieldByName('account_name').AsString, True);
+      Writer.WriteLine;
       Q.Next;
     end;
   finally
-    CloseFile(F);
+    Writer.Free;
     Q.Free;
   end;
 end;
@@ -547,7 +547,7 @@ end;
 
 procedure RepoImportCsv(const APath: string; out AImported, ASkipped: Integer);
 var
-  F: TextFile;
+  Reader: TStreamReader;
   Line: string;
   Parts: TStringList;
   Tx: TTransactionRec;
@@ -562,16 +562,15 @@ begin
   if not FileExists(APath) then
     Exit;
 
-  AssignFile(F, APath);
-  Reset(F);
+  Reader := TStreamReader.Create(APath, TEncoding.UTF8);
   try
-    if not Eof(F) then
-      ReadLn(F, Line); // header
+    if not Reader.EndOfStream then
+      Reader.ReadLine;
     FS := TFormatSettings.Create;
     FS.DecimalSeparator := '.';
-    while not Eof(F) do
+    while not Reader.EndOfStream do
     begin
-      ReadLn(F, Line);
+      Line := Reader.ReadLine;
       if Trim(Line) = '' then
         Continue;
       Parts := CsvSplit(Line);
@@ -581,12 +580,12 @@ begin
           Inc(ASkipped);
           Continue;
         end;
-        FillChar(Tx, SizeOf(Tx), 0);
-        Tx.DateStr := ShortString(Trim(Parts[0]));
+        Tx := Default(TTransactionRec);
+        Tx.DateStr := Trim(Parts[0]);
         IsIncome := Trim(Parts[1]) = REPO_CSV_BOOL_TRUE;
         Tx.IsIncome := IsIncome;
-        Tx.Category := ShortString(Trim(Parts[2]));
-        Tx.Description := ShortString(Trim(Parts[3]));
+        Tx.Category := Trim(Parts[2]);
+        Tx.Description := Trim(Parts[3]);
         SAmount := StringReplace(Trim(Parts[4]), ',', '.', [rfReplaceAll]);
         if not TryStrToFloat(SAmount, Tx.Amount, FS) then
         begin
@@ -609,7 +608,7 @@ begin
           Continue;
         end;
         Tx.AccountId := AccountId;
-        RepoEnsureCategory(IsIncome, string(Tx.Category));
+        RepoEnsureCategory(IsIncome, Tx.Category);
         RepoInsertTransaction(Tx);
         Inc(AImported);
       finally
@@ -617,7 +616,7 @@ begin
       end;
     end;
   finally
-    CloseFile(F);
+    Reader.Free;
   end;
 end;
 

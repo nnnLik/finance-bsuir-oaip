@@ -104,7 +104,7 @@ begin
     begin
       if P^.Data.IsIncome = WantIncome then
       begin
-        Cat := Trim(string(P^.Data.Category));
+        Cat := Trim(P^.Data.Category);
         if Cat = '' then
           Cat := ANALYTICS_EMPTY_CATEGORY;
         I := 0;
@@ -173,7 +173,7 @@ begin
     P := H;
     while P <> nil do
     begin
-      if TryParseRuDate(string(P^.Data.DateStr), Dt) then
+      if TryParseRuDate(P^.Data.DateStr, Dt) then
       begin
         Y := YearOf(Dt);
         M := MonthOf(Dt);

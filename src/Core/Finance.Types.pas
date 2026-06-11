@@ -6,13 +6,13 @@ const
   DEFAULT_DB_FILE = 'finance.db';
 
 type
-  TTransactionRec = packed record
+  TTransactionRec = record
     Id: Int64;
     AccountId: Int64;
-    DateStr: string[20];
+    DateStr: string;
     IsIncome: Boolean;
-    Category: string[40];
-    Description: string[100];
+    Category: string;
+    Description: string;
     Amount: Double;
   end;
 

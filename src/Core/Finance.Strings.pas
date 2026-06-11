@@ -96,6 +96,8 @@ const
   // Repository keys and values
   REPO_KEY_ACTIVE_ACCOUNT_ID = 'active_account_id';
   REPO_KEY_ANALYTICS_SCOPE = 'analytics_scope';
+  REPO_KEY_ENCODING_VERSION = 'encoding_version';
+  REPO_ENCODING_VERSION = '2';
   REPO_SCOPE_ACTIVE = 'active';
   REPO_SCOPE_ALL = 'all';
   REPO_FILTER_ALL = 'Все';

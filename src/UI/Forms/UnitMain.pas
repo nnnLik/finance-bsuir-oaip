@@ -146,7 +146,7 @@ begin
   if (cmbCategoryFilter.ItemIndex > 0) and (cmbCategoryFilter.Text <> '') then
   begin
     FilterCat := Trim(cmbCategoryFilter.Text);
-    if not SameText(string(AData.Category), FilterCat) then
+    if not SameText(AData.Category, FilterCat) then
       Exit(False);
   end;
   Result := True;
@@ -231,14 +231,14 @@ begin
     begin
       if R >= StringGrid1.RowCount then
         StringGrid1.RowCount := R + 1;
-      StringGrid1.Cells[0, R] := string(P^.Data.DateStr);
+      StringGrid1.Cells[0, R] := P^.Data.DateStr;
       if P^.Data.IsIncome then
         Typ := MAIN_TX_INCOME
       else
         Typ := MAIN_TX_EXPENSE;
       StringGrid1.Cells[1, R] := Typ;
-      StringGrid1.Cells[2, R] := string(P^.Data.Category);
-      StringGrid1.Cells[3, R] := string(P^.Data.Description);
+      StringGrid1.Cells[2, R] := P^.Data.Category;
+      StringGrid1.Cells[3, R] := P^.Data.Description;
       StringGrid1.Cells[4, R] := FormatFloat(AMOUNT_FORMAT, P^.Data.Amount);
       StringGrid1.Cells[COL_EDIT, R] := MAIN_ICON_EDIT;
       StringGrid1.Cells[COL_DEL, R] := MAIN_ICON_DELETE;
@@ -281,7 +281,7 @@ procedure TMainPageForm.BtnAddClick(Sender: TObject);
 var
   Rec: TTransactionRec;
 begin
-  FillChar(Rec, SizeOf(Rec), 0);
+  Rec := Default(TTransactionRec);
   if not Assigned(TransactionEditForm) then
     TransactionEditForm := TTransactionEditForm.Create(Application);
   if TransactionEditForm.Execute(Rec, False) then
