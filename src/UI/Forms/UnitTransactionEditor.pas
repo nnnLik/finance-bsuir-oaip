@@ -32,6 +32,7 @@ type
     procedure TypeRadioClick(Sender: TObject);
   private
     FResult: TTransactionRec;
+    function GetCategoryValue: string;
     procedure RefillCategories(const SelectName: string);
     procedure LoadFromRec(const ARec: TTransactionRec);
     procedure SaveToRec(var ARec: TTransactionRec);
@@ -52,6 +53,19 @@ uses
   Finance.Categories;
 
 {$R *.dfm}
+
+function TTransactionEditForm.GetCategoryValue: string;
+begin
+  if (cmbCategory.ItemIndex >= 0) and
+    (cmbCategory.ItemIndex < cmbCategory.Items.Count) then
+    Result := Trim(cmbCategory.Items[cmbCategory.ItemIndex])
+  else
+  begin
+    Result := Trim(cmbCategory.Text);
+    if Result = '' then
+      raise Exception.Create(TX_ERR_CATEGORY_REQUIRED);
+  end;
+end;
 
 procedure TTransactionEditForm.RefillCategories(const SelectName: string);
 var
@@ -75,14 +89,21 @@ begin
         Break;
       end;
   if J >= 0 then
-    cmbCategory.ItemIndex := J
+  begin
+    cmbCategory.Style := csDropDownList;
+    cmbCategory.ItemIndex := J;
+  end
   else if S <> '' then
   begin
+    cmbCategory.Style := csDropDown;
     cmbCategory.ItemIndex := -1;
     cmbCategory.Text := S;
   end
   else
+  begin
+    cmbCategory.Style := csDropDownList;
     cmbCategory.ItemIndex := 0;
+  end;
 end;
 
 procedure TTransactionEditForm.FormCreate(Sender: TObject);
@@ -100,7 +121,7 @@ begin
   lblDescription.Caption := TX_LABEL_DESCRIPTION;
   btnCancel.Caption := TX_BTN_CANCEL;
   CategoriesLoad;
-  cmbCategory.Style := csDropDown;
+  cmbCategory.Style := csDropDownList;
   dtpDate.Date := Date;
   rbIncome.Checked := True;
   rbExpense.Checked := False;
@@ -157,16 +178,7 @@ begin
 
   ARec.IsIncome := rbIncome.Checked;
 
-  S := Trim(cmbCategory.Text);
-  if S = '' then
-  begin
-    if (cmbCategory.ItemIndex >= 0) and
-      (cmbCategory.ItemIndex < cmbCategory.Items.Count) then
-      S := Trim(cmbCategory.Items[cmbCategory.ItemIndex])
-    else
-      raise Exception.Create(TX_ERR_CATEGORY_REQUIRED);
-  end;
-  ARec.Category := S;
+  ARec.Category := GetCategoryValue;
 
   ARec.Description := Trim(edtDescription.Text);
 

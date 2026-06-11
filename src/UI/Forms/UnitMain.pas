@@ -143,9 +143,9 @@ function TMainPageForm.MatchesFilters(const AData: TTransactionRec): Boolean;
 var
   FilterCat: string;
 begin
-  if (cmbCategoryFilter.ItemIndex > 0) and (cmbCategoryFilter.Text <> '') then
+  if cmbCategoryFilter.ItemIndex > 0 then
   begin
-    FilterCat := Trim(cmbCategoryFilter.Text);
+    FilterCat := Trim(cmbCategoryFilter.Items[cmbCategoryFilter.ItemIndex]);
     if not SameText(AData.Category, FilterCat) then
       Exit(False);
   end;
@@ -195,7 +195,7 @@ begin
   if cmbCategoryFilter.ItemIndex <= 0 then
     Old := ''
   else
-    Old := Trim(cmbCategoryFilter.Text);
+    Old := Trim(cmbCategoryFilter.Items[cmbCategoryFilter.ItemIndex]);
   FillFilterCategories(cmbCategoryFilter.Items);
   cmbCategoryFilter.ItemIndex := 0;
   if Old <> '' then

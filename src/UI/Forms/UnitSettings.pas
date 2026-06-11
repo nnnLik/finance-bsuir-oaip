@@ -55,6 +55,14 @@ implementation
 uses
   Vcl.Dialogs, Finance.Repository, Finance.Strings;
 
+function ComboBoxValue(const Combo: TComboBox): string;
+begin
+  if (Combo.ItemIndex >= 0) and (Combo.ItemIndex < Combo.Items.Count) then
+    Result := Trim(Combo.Items[Combo.ItemIndex])
+  else
+    Result := Trim(Combo.Text);
+end;
+
 constructor TSettingsPageForm.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
@@ -349,7 +357,7 @@ procedure TSettingsPageForm.BtnAddIncomeClick(Sender: TObject);
 var
   S: string;
 begin
-  S := Trim(cmbIncome.Text);
+  S := ComboBoxValue(cmbIncome);
   if S = '' then
     Exit;
   RepoEnsureCategory(True, S);
@@ -362,7 +370,7 @@ procedure TSettingsPageForm.BtnDeleteIncomeClick(Sender: TObject);
 var
   S: string;
 begin
-  S := Trim(cmbIncome.Text);
+  S := ComboBoxValue(cmbIncome);
   if S = '' then
     Exit;
   if MessageDlg(Format(SETTINGS_DELETE_CATEGORY_CONFIRM_FMT, [S]), mtConfirmation,
@@ -378,7 +386,7 @@ procedure TSettingsPageForm.BtnAddExpenseClick(Sender: TObject);
 var
   S: string;
 begin
-  S := Trim(cmbExpense.Text);
+  S := ComboBoxValue(cmbExpense);
   if S = '' then
     Exit;
   RepoEnsureCategory(False, S);
@@ -391,7 +399,7 @@ procedure TSettingsPageForm.BtnDeleteExpenseClick(Sender: TObject);
 var
   S: string;
 begin
-  S := Trim(cmbExpense.Text);
+  S := ComboBoxValue(cmbExpense);
   if S = '' then
     Exit;
   if MessageDlg(Format(SETTINGS_DELETE_CATEGORY_CONFIRM_FMT, [S]), mtConfirmation,
