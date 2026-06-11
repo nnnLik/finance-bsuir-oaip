@@ -138,12 +138,24 @@ begin
 end;
 
 procedure EnsureCategoryEncoding;
+var
+  Cur: string;
+  CurNum: Integer;
 begin
-  if SameText(ReadSetting(REPO_KEY_ENCODING_VERSION, '1'),
-    REPO_ENCODING_VERSION) then
+  Cur := Trim(ReadSetting(REPO_KEY_ENCODING_VERSION, '1'));
+  if SameText(Cur, REPO_ENCODING_VERSION) then
     Exit;
-  ExecSQL('DELETE FROM categories');
-  EnsureDefaultCategories;
+  CurNum := StrToIntDef(Cur, 1);
+
+  if CurNum < 2 then
+  begin
+    ExecSQL('DELETE FROM categories');
+    EnsureDefaultCategories;
+  end;
+
+  if CurNum < 3 then
+    ExecSQL('DELETE FROM transactions');
+
   ExecSQL('INSERT OR REPLACE INTO app_settings(key, value) VALUES (' +
     QuotedStr(REPO_KEY_ENCODING_VERSION) + ', ' +
     QuotedStr(REPO_ENCODING_VERSION) + ')');
